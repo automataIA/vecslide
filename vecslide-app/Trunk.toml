@@ -1,0 +1,35 @@
+[build]
+target     = "index.html"
+release    = true
+dist       = "dist"
+public_url = "/"
+filehash   = true
+inject_scripts = true
+
+# ── Tailwind v4 hooks ────────────────────────────────────────────────────────
+#
+# Trunk does not natively support Tailwind v4 (it looks for tailwind.config.js which
+# v4 does not use). The solution from the compatibility document is to decouple Trunk
+# from Tailwind and invoke the v4 CLI directly via npx.
+#
+# Hook "pre_build": compiles the CSS BEFORE Trunk processes index.html,
+# so the tailwind.css file is already ready when Trunk references it.
+
+[[hooks]]
+stage    = "pre_build"
+command  = "sh"
+command_arguments = [
+  "-c",
+  "npx @tailwindcss/cli -i style/input.css -o public/tailwind.css --minify"
+]
+
+[watch]
+watch  = []
+# public/tailwind.css is written by the pre_build hook; ignoring it prevents
+# Trunk from detecting the write as a source change and triggering a rebuild loop.
+ignore = ["public/tailwind.css"]
+
+[serve]
+addresses = ["127.0.0.1"]
+port      = 3000
+open      = false

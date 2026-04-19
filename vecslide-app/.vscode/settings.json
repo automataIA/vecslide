@@ -1,0 +1,24 @@
+{
+    "rust-analyzer.rustfmt.overrideCommand": [
+        "leptosfmt",
+        "--stdin",
+        "--rustfmt"
+    ],
+    "editor.formatOnSave": true,
+    "[rust]": {
+        "editor.defaultFormatter": "rust-lang.rust-analyzer"
+    },
+    "files.associations": {
+        "*.rs": "rust"
+    },
+
+    // ── Tailwind v4 IntelliSense ────────────────────────────────────────────
+    // Punta l'estensione al file CSS (non al tailwind.config.js che v4 non usa)
+    "tailwindCSS.experimental.configFile": "style/input.css",
+    // Tratta i file .rs come HTML per l'autocompletamento delle classi Tailwind
+    "tailwindCSS.includeLanguages": {
+        "rust": "html"
+    },
+    // Riconosce anche l'attributo class: di Leptos oltre al classico class=
+    "tailwindCSS.classAttributes": ["class", "class:"]
+}

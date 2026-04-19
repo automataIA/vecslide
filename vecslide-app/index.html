@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html data-theme="bumblebee">
+
+<head>
+  <meta charset="UTF-8">
+  <!--
+    CSS generato da Tailwind v4 + DaisyUI v5.
+    Il file public/tailwind.css viene prodotto dall'hook pre_build in Trunk.toml
+    tramite: npx @tailwindcss/cli -i style/input.css -o public/tailwind.css
+  -->
+  <link data-trunk rel="css" href="public/tailwind.css" />
+
+  <!-- Plus Jakarta Sans · JetBrains Mono · Roboto Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+  <link data-trunk rel="icon" href="public/favicon.ico" />
+  <link data-trunk rel="copy-file" href="public/tts-worker.js" />
+
+  <!-- Brand assets: served at site root by Trunk, consumed by Leptos pages via /<file>.svg -->
+  <link data-trunk rel="copy-file" href="public/vecslide-icon-color.svg" />
+  <link data-trunk rel="copy-file" href="public/vecslide-logo-horizontal-color.svg" />
+  <link data-trunk rel="copy-file" href="public/vecslide-wordmark-color.svg" />
+  <link data-trunk rel="copy-file" href="public/vecslide-logo-stacked-color.svg" />
+  <link data-trunk rel="rust" data-wasm-opt="0" />
+
+  <!--
+    Kokoro-82M TTS loader shim (Web Worker edition).
+
+    Bridges the `kokoro-js` NPM package (maintained by Xenova, built on
+    Transformers.js + ONNX Runtime Web) to a tiny Promise-returning API
+    on `window.__vecslideKokoro`, which the Rust/wasm side calls via
+    `wasm-bindgen` extern bindings in `src/tts/bindings.rs`.
+
+    All heavy work (model download, ONNX inference) runs in a dedicated
+    Web Worker (`tts-worker.js`) so the main thread — and therefore the
+    UI — stays responsive during synthesis.
+
+    The voice list is fetched on the main thread via a lightweight dummy
+    instance (no model download needed).
+
+    Model: onnx-community/Kokoro-82M-v1.0-ONNX (HuggingFace)
+    Variant: q8 (int8, ~92 MB) — best tradeoff size/quality
+  -->
+  <script type="module">
+    import { KokoroTTS } from "https://esm.sh/kokoro-js@1.2.0";
+
+    // Voice names are available immediately from the KokoroTTS class — no model
+    // download needed.  A zero-cost dummy instance exposes the VOICES object via
+    // the getter that every KokoroTTS instance inherits.
+    const _dummyInstance = new KokoroTTS(null, null);
+    const _allVoiceIds   = Object.freeze(Object.keys(_dummyInstance.voices));
+
+    // ── Web Worker for inference ───────────────────────────────────────────────
+    const _worker = new Worker("/tts-worker.js", { type: "module" });
+    let _ready = false;
+    let _nextId = 1;
+    // Pending generate() calls keyed by request id.
+    const _pending = new Map();
+    // load() progress callback — set during load().
+    let _progressCb = null;
+    // load() promise resolve/reject — set during load().
+    let _loadResolve = null;
+    let _loadReject  = null;
+    let _loadPromise = null;
+
+    _worker.addEventListener("message", (event) => {
+      const msg = event.data;
+      switch (msg.type) {
+        case "progress":
+          if (_progressCb) {
+            try { _progressCb(msg); } catch (_) {}
+          }
+          break;
+        case "loaded":
+          _ready = true;
+          if (_loadResolve) { _loadResolve(); _loadResolve = null; _loadReject = null; }
+          break;
+        case "generated": {
+          const p = _pending.get(msg.id);
+          if (p) {
+            _pending.delete(msg.id);
+            p.resolve({ pcm: msg.pcm, sampleRate: msg.sampleRate });
+          }
+          break;
+        }
+        case "error": {
+          if (msg.id != null) {
+            const p = _pending.get(msg.id);
+            if (p) {
+              _pending.delete(msg.id);
+              p.reject(new Error(msg.message));
+            }
+          } else {
+            // Load error
+            if (_loadReject) { _loadReject(new Error(msg.message)); _loadResolve = null; _loadReject = null; }
+          }
+          break;
+        }
+      }
+    });
+
+    async function load(onProgress) {
+      if (_ready) return;
+      if (_loadPromise) {
+        _progressCb = onProgress || null;
+        await _loadPromise;
+        return;
+      }
+      _progressCb = onProgress || null;
+      _loadPromise = new Promise((resolve, reject) => {
+        _loadResolve = resolve;
+        _loadReject  = reject;
+      });
+      _worker.postMessage({ type: "load" });
+      try {
+        await _loadPromise;
+      } finally {
+        _loadPromise = null;
+        _progressCb = null;
+      }
+    }
+
+    async function generate(text, voice) {
+      if (!_ready) {
+        throw new Error("Kokoro model not loaded (call load() first)");
+      }
+      const id = _nextId++;
+      return new Promise((resolve, reject) => {
+        _pending.set(id, { resolve, reject });
+        _worker.postMessage({ type: "generate", id, text, voice });
+      });
+    }
+
+    function isReady() {
+      return _ready;
+    }
+
+    function listVoices() {
+      return _allVoiceIds;
+    }
+
+    window.__vecslideKokoro = { load, generate, isReady, listVoices };
+  </script>
+</head>
+
+<body></body>
+
+</html>

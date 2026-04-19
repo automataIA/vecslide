@@ -1,0 +1,37 @@
+[package]
+name          = "vecslide-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme        = "README.md"
+rust-version.workspace = true
+description   = "Core library for the .vecslide format: SVG + Opus vector presentations with synchronized audio. Manifest, packing, HTML compilation."
+documentation = "https://docs.rs/vecslide-core"
+keywords      = ["presentation", "svg", "opus", "slides", "typst"]
+categories    = ["multimedia", "encoding", "wasm"]
+exclude       = ["tests/fixtures/*.vecslide", "tests/fixtures/*.html"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+serde.workspace      = true
+serde_norway.workspace = true
+serde_json.workspace = true
+thiserror.workspace  = true
+base64.workspace     = true
+tracing.workspace    = true
+zip                  = { workspace = true, optional = true }
+typst                = { workspace = true, optional = true }
+typst-as-lib         = { workspace = true, optional = true }
+typst-svg            = { workspace = true, optional = true }
+
+[features]
+default = []
+# ZIP read/write in-memory — WASM-safe (no std::fs). Uses miniz_oxide (pure Rust) via deflate feature.
+zip-io  = ["dep:zip"]
+# Enables std::fs I/O for pack/unpack, and Typst compilation. Do NOT enable for WASM builds.
+native  = ["zip-io", "dep:typst", "dep:typst-as-lib", "dep:typst-svg"]

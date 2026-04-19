@@ -1,0 +1,9 @@
+{
+  "name": "vecslide-app",
+  "private": true,
+  "devDependencies": {
+    "@tailwindcss/cli": "^4",
+    "tailwindcss": "^4",
+    "daisyui": "^5"
+  }
+}

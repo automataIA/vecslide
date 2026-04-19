@@ -1,0 +1,27 @@
+[package]
+name          = "vecslide"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme        = "README.md"
+rust-version.workspace = true
+description   = "Vector presentation format with synchronized audio (facade re-exporting vecslide-core)."
+documentation = "https://docs.rs/vecslide"
+keywords      = ["presentation", "svg", "opus", "slides", "typst"]
+categories    = ["multimedia", "encoding", "wasm"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+vecslide-core = { workspace = true }
+
+[features]
+default = []
+# Forwards to vecslide-core/zip-io — WASM-safe in-memory ZIP I/O.
+zip-io  = ["vecslide-core/zip-io"]
+# Forwards to vecslide-core/native — std::fs + Typst compilation. Not WASM-compatible.
+native  = ["vecslide-core/native"]

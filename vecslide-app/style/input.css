@@ -1,0 +1,125 @@
+/* ── Tailwind CSS v4 ─────────────────────────────────────────────────────── */
+@import "tailwindcss";
+
+/*
+  STRATEGICO: puntatore esplicito ai sorgenti Rust.
+  Senza questa direttiva il motore Oxide (Tailwind 4) non scansiona i file .rs
+  e non genera le classi usate nelle macro view! di Leptos.
+  Risolve il problema dei monorepo e dei layout non-JS.
+*/
+@source "../src";
+
+/* ── DaisyUI v5 ──────────────────────────────────────────────── */
+@plugin "daisyui" {
+  themes: bumblebee --default, business;
+}
+
+/* ── Stili globali dell'app ──────────────────────────────────────────────── */
+html {
+  /* DPI-aware root font size: scales from 14px (720p) to 18px (4K+).
+     Uses viewport width as a proxy for DPI — wider screens get larger text. */
+  font-size: clamp(14px, 0.42cqw + 10px, 18px);
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Accent text ─────────────────────────────────────────────── */
+.text-accent-brand {
+  color: var(--color-primary);
+}
+
+/* ── Card ────────────────────────────────────────────────────── */
+.card-surface {
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  border-radius: 0.75rem;
+}
+
+/* ── Dot grid background ─────────────────────────────────────── */
+.bg-dot-grid {
+  background-image: radial-gradient(circle, color-mix(in oklch, var(--color-base-content) 8%, transparent) 1px, transparent 1px);
+  background-size: 1.75rem 1.75rem;
+}
+
+/* ── Drag-drop zone ──────────────────────────────────────────── */
+.drop-zone {
+  border: 2px dashed color-mix(in oklch, var(--color-base-content) 20%, transparent);
+  background: color-mix(in oklch, var(--color-base-100) 50%, transparent);
+  transition: border-color 0.2s, background 0.2s;
+}
+.drop-zone:hover, .drop-zone-active {
+  border-color: var(--color-primary);
+  background: color-mix(in oklch, var(--color-primary) 6%, transparent);
+}
+
+/* ── Editor pane resize ──────────────────────────────────────── */
+.editor-pane-left {
+  resize: horizontal;
+  overflow: hidden;
+  min-width: 15rem;
+  max-width: 80%;
+}
+
+/* ── Code textarea ───────────────────────────────────────────── */
+.code-textarea {
+  font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  tab-size: 2;
+  resize: none;
+  outline: none;
+}
+.code-textarea::placeholder {
+  color: color-mix(in oklch, var(--color-base-content) 40%, transparent);
+}
+
+/* ── Scrollbar thin ──────────────────────────────────────────── */
+.scrollbar-thin::-webkit-scrollbar { width: 0.3125rem; height: 0.3125rem; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--color-base-300) 70%, transparent);
+  border-radius: 0.1875rem;
+}
+
+/* ── Typst SVG preview — scale to fill its wrapper ───────────── */
+svg.typst-doc {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── Slide preview: contain-fit inside the flex area ─────────── */
+/*
+ * .slide-preview-area sets up a CSS container so that cqw/cqh units
+ * inside it reference the area's own dimensions (padding excluded).
+ * .slide-preview then uses min() to pick whichever axis is limiting,
+ * replicating object-fit:contain for a regular div.
+ */
+.slide-preview-area {
+  container-type: size;
+}
+
+.slide-preview {
+  width: min(100%, calc(100cqh * 16 / 9));
+  height: min(100%, calc(100cqw * 9 / 16));
+  box-shadow: var(--shadow-card, 0 25px 60px rgba(0, 0, 0, 0.5));
+}
+
+/* ── Slide tab ───────────────────────────────────────────────── */
+.slide-tab-active {
+  background: color-mix(in oklch, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+  border-color: color-mix(in oklch, var(--color-primary) 60%, transparent);
+}
+
+/* ── Reduced motion ──────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

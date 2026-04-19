@@ -1,0 +1,37 @@
+[workspace]
+members = ["vecslide-core", "vecslide", "vecslide-app"]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/automataIA/vecslide"
+homepage = "https://github.com/automataIA/vecslide"
+rust-version = "1.90"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_norway = "0.9"
+serde_json = "1"
+thiserror = "2"
+anyhow = "1"
+zip = { version = "8", default-features = false, features = ["deflate"] }
+base64 = "0.22"
+tracing = "0.1"
+vecslide-core = { version = "0.1.0", path = "vecslide-core" }
+typst = "0.14"
+typst-as-lib = "0.15"
+typst-svg = "0.14"

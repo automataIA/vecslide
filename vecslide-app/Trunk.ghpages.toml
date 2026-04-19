@@ -1,0 +1,24 @@
+[build]
+target     = "index.html"
+features   = ["gh-pages"]
+release    = true
+dist       = "dist"
+public_url = "/vecslide/"
+filehash   = true
+inject_scripts = true
+minify     = "on_release"
+
+# Tailwind v4 via npx (same as Trunk.toml, Trunk cannot detect v4 natively)
+[[hooks]]
+stage    = "pre_build"
+command  = "sh"
+command_arguments = [
+  "-c",
+  "npx --yes @tailwindcss/cli -i style/input.css -o public/tailwind.css --minify"
+]
+
+# Disable Jekyll preprocessing on GitHub Pages
+[[hooks]]
+stage    = "post_build"
+command  = "sh"
+command_arguments = ["-c", "cp public/.nojekyll dist/"]

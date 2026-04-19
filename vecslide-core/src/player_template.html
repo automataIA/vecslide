@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VecSlide</title>
+<style>
+  :root {
+    {{THEME_CSS}}
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--vs-base-100);
+    color: var(--vs-base-content);
+    font-family: sans-serif;
+    overflow: hidden;
+  }
+
+  #stage {
+    position: relative;
+    width: 100vw;
+    height: calc(100vh - 52px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .slide-container {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .slide-container svg {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+  }
+
+  #pointer-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* Transitions */
+  .slide-container { transition: opacity 0.35s ease, transform 0.35s ease; transform-origin: center; }
+  .slide-container.hidden { opacity: 0; pointer-events: none; transform: scale(0.98); }
+  .slide-container.visible { opacity: 1; transform: scale(1); }
+
+  /* Controls bar */
+  #controls {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 52px;
+    background: var(--vs-base-200);
+    border-top: 1px solid var(--vs-base-300);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    user-select: none;
+  }
+
+  #controls button {
+    background: var(--vs-base-100);
+    border: 1px solid var(--vs-base-300);
+    color: var(--vs-base-content);
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    flex-shrink: 0;
+    line-height: 1.2;
+    min-width: 36px;
+    text-align: center;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  #controls button:hover {
+    background: color-mix(in srgb, var(--vs-primary) 12%, var(--vs-base-100));
+    border-color: var(--vs-primary);
+    color: var(--vs-primary);
+  }
+  #controls button:disabled { opacity: 0.35; cursor: default; border-color: var(--vs-base-300); color: var(--vs-base-content); }
+
+  #btn-play {
+    background: var(--vs-primary);
+    color: var(--vs-base-100);
+    border-color: var(--vs-primary);
+    font-size: 16px;
+    min-width: 40px;
+    padding: 4px 10px;
+    border-radius: 8px;
+  }
+  #btn-play:hover { filter: brightness(1.15); color: var(--vs-base-100); }
+
+  /* Seek bar */
+  #seek-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  #seek-bar {
+    flex: 1;
+    height: 5px;
+    background: var(--vs-base-300);
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  #seek-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: var(--vs-primary);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.25s linear;
+  }
+  #seek-bar:hover { height: 8px; margin-top: -1.5px; margin-bottom: -1.5px; }
+  #time-display {
+    font-size: 12px;
+    color: var(--vs-neutral-content);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+    min-width: 80px;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.03em;
+  }
+
+  #volume-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  #volume {
+    width: 64px;
+    height: 4px;
+    accent-color: var(--vs-primary);
+    cursor: pointer;
+  }
+
+  #slide-counter {
+    font-size: 11px;
+    color: var(--vs-neutral-content);
+    flex-shrink: 0;
+    background: var(--vs-base-100);
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--vs-base-300);
+    font-variant-numeric: tabular-nums;
+  }
+  #speed-btn     { min-width: 42px; }
+  #btn-read      { display: none; }
+  #btn-read.reading { border-color: var(--vs-primary); color: var(--vs-primary); }
+
+  /* Keyboard shortcuts overlay */
+  #shortcuts-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  #shortcuts-overlay.visible { display: flex; }
+  #shortcuts-box {
+    background: var(--vs-base-200);
+    border: 1px solid var(--vs-base-300);
+    border-radius: 12px;
+    padding: 24px 32px;
+    min-width: 340px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+  }
+  #shortcuts-box h2 { margin-bottom: 16px; font-size: 15px; font-weight: 600; color: var(--vs-base-content); }
+  #shortcuts-box table { border-collapse: collapse; width: 100%; }
+  #shortcuts-box td { padding: 6px 10px; font-size: 13px; color: var(--vs-neutral-content); }
+  #shortcuts-box td:first-child { color: var(--vs-primary); font-family: 'Courier New', monospace; font-weight: 600; min-width: 90px; }
+  #shortcuts-box p { margin-top: 12px; font-size: 11px; color: var(--vs-neutral); text-align: right; }
+
+  /* Captions overlay */
+  #caption {
+    display: none;
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 80%;
+    background: rgba(0,0,0,0.65);
+    color: #fff;
+    font-size: 18px;
+    line-height: 1.4;
+    padding: 6px 16px;
+    border-radius: 4px;
+    text-align: center;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Error slide fallback */
+  .slide-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--vs-error);
+    font-size: 14px;
+  }
+
+  /* Mobile / touch */
+  @media (max-width: 768px) {
+    #controls { gap: 4px; padding: 0 8px; }
+    #controls button { padding: 4px 7px; font-size: 12px; }
+    #volume-wrap { display: none; }
+    #seek-wrap { display: none; }
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .slide-container { transition: none !important; }
+    #seek-fill { transition: none !important; }
+  }
+</style>
+</head>
+<body role="application" aria-label="VecSlide Presentation Viewer">
+
+<!-- Manifest JSON (no annotation data) -->
+<script type="application/json" id="manifest">{{MANIFEST_JSON}}</script>
+
+<!-- Audio master clock -->
+<audio id="audio" preload="auto" src="data:audio/ogg;base64,{{AUDIO_BASE64}}"></audio>
+
+<!-- SVG slide data -->
+{{SLIDE_SCRIPTS}}
+
+<!-- Stage: two-buffer swap for lag-free transitions -->
+<div id="stage">
+  <div id="slide-current" class="slide-container visible"></div>
+  <div id="slide-next"    class="slide-container hidden"></div>
+  <svg id="pointer-layer" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="caption" aria-live="polite" aria-atomic="true"></div>
+</div>
+
+<!-- Title overlay -->
+<div id="title-overlay" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--vs-base-200);z-index:50;transition:opacity 0.6s ease;cursor:pointer;">
+  <div style="text-align:center;">
+    <h1 id="title-text" style="font-size:28px;font-weight:700;color:var(--vs-base-content);margin:0 0 8px;"></h1>
+    <p id="author-text" style="font-size:14px;color:var(--vs-neutral-content);margin:0;"></p>
+    <p style="margin-top:24px;font-size:12px;color:var(--vs-base-content);opacity:0.5;">Press Space or click to begin</p>
+  </div>
+</div>
+
+<!-- Controls -->
+<div id="controls">
+  <button id="btn-read"  aria-label="Read aloud (T)">Read</button>
+  <button id="btn-prev"  aria-label="Previous slide (Left arrow)">Prev</button>
+  <button id="btn-play"  aria-label="Play or pause (Space)">&#9654;</button>
+  <button id="btn-next"  aria-label="Next slide (Right arrow)">Next</button>
+  <span id="slide-counter" aria-live="polite" aria-label="Current slide">1 / 1</span>
+  <div id="seek-wrap">
+    <div id="seek-bar" role="slider" aria-label="Seek position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+      <div id="seek-fill"></div>
+    </div>
+    <span id="time-display" aria-live="off">0:00 / 0:00</span>
+  </div>
+  <div id="volume-wrap">
+    <input id="volume" type="range" min="0" max="1" step="0.01" value="1"
+           aria-label="Volume" />
+  </div>
+  <button id="speed-btn"  aria-label="Playback speed">1x</button>
+  <button id="shortcuts-btn" aria-label="Keyboard shortcuts (?)">?</button>
+</div>
+
+<!-- Keyboard shortcuts overlay -->
+<div id="shortcuts-overlay" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+  <div id="shortcuts-box">
+    <h2>Keyboard shortcuts</h2>
+    <table>
+      <tr><td>Space</td><td>Play / Pause</td></tr>
+      <tr><td>&#8592; / &#8594;</td><td>Previous / Next event</td></tr>
+      <tr><td>F</td><td>Fullscreen</td></tr>
+      <tr><td>+ / -</td><td>Speed up / down</td></tr>
+      <tr><td>M</td><td>Mute / Unmute</td></tr>
+      <tr><td>T</td><td>Read aloud / Stop</td></tr>
+      <tr><td>?</td><td>Show / hide this panel</td></tr>
+      <tr><td>Esc</td><td>Close this panel</td></tr>
+    </table>
+    <p>Click anywhere outside to close</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ── Bootstrap ────────────────────────────────────────────────────────────
+  const manifest = JSON.parse(document.getElementById("manifest").textContent);
+  const audio    = document.getElementById("audio");
+  const elCurrent = document.getElementById("slide-current");
+  const elNext    = document.getElementById("slide-next");
+  const pointerLayer = document.getElementById("pointer-layer");
+  const btnPlay  = document.getElementById("btn-play");
+  const btnPrev  = document.getElementById("btn-prev");
+  const btnNext  = document.getElementById("btn-next");
+  const slideCounter = document.getElementById("slide-counter");
+  const volumeSlider = document.getElementById("volume");
+  const speedBtn     = document.getElementById("speed-btn");
+  const shortcutsBtn = document.getElementById("shortcuts-btn");
+  const shortcutsOverlay = document.getElementById("shortcuts-overlay");
+  const btnRead     = document.getElementById("btn-read");
+  const seekBar     = document.getElementById("seek-bar");
+  const seekFill    = document.getElementById("seek-fill");
+  const timeDisplay = document.getElementById("time-display");
+
+  const captionEl = document.getElementById("caption");
+  const slides = manifest.slides || [];
+  // Static mode: no audio track → navigate by slide index only.
+  const hasAudio = !!manifest.audio_track;
+
+  // ── Title overlay ──────────────────────────────────────────────────────
+  (function initTitle() {
+    const titleEl = document.getElementById("title-text");
+    const authorEl = document.getElementById("author-text");
+    const overlay = document.getElementById("title-overlay");
+    if (titleEl) titleEl.textContent = manifest.title || "Presentation";
+    if (authorEl) authorEl.textContent = manifest.author || "";
+    function hideTitle() {
+      if (overlay) { overlay.style.opacity = "0"; setTimeout(function() { overlay.remove(); }, 600); }
+      document.removeEventListener("click", hideTitle);
+      document.removeEventListener("keydown", hideTitle);
+    }
+    if (overlay) {
+      document.addEventListener("click", hideTitle);
+      document.addEventListener("keydown", hideTitle);
+      setTimeout(hideTitle, 4000);
+    }
+  })();
+
+  // ── Captions (audio mode) ─────────────────────────────────────────────────
+  const captionSegs = manifest.transcript?.segments;
+  let lastCaptionIdx = -1;
+  function captionTick(timeMs) {
+    if (!captionSegs) return;
+    let found = -1;
+    for (let i = 0; i < captionSegs.length; i++) {
+      const s = captionSegs[i];
+      if (s.start_ms <= timeMs && timeMs < s.end_ms) { found = i; break; }
+    }
+    if (found !== lastCaptionIdx) {
+      lastCaptionIdx = found;
+      if (found >= 0) {
+        captionEl.textContent = captionSegs[found].text;
+        captionEl.style.display = "block";
+      } else {
+        captionEl.style.display = "none";
+      }
+    }
+  }
+
+  // Static mode: look up transcript segment by slide_ref.
+  function showCaptionForSlide(slideId) {
+    const segs = manifest.transcript?.segments;
+    if (!segs) { captionEl.style.display = "none"; return; }
+    const seg = segs.find(s => s.slide_ref === slideId);
+    if (seg?.text) {
+      captionEl.textContent = seg.text;
+      captionEl.style.display = "block";
+    } else {
+      captionEl.style.display = "none";
+    }
+  }
+
+  // Pre-load all SVG strings from inline script blocks.
+  const svgCache = slides.map((_, i) => {
+    const el = document.getElementById("slide-" + i);
+    return el ? el.textContent : "";
+  });
+
+  // ── State ────────────────────────────────────────────────────────────────
+  let currentIndex = -1;
+  let nextPrepared = -1;
+  let staticIdx  = 0; // index used in no-audio (static) mode
+
+  const activeAnimations = [];
+
+  // Speed control
+  const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  let speedIdx = 2; // default 1x
+
+  function slideIndexAt(timeMs) {
+    let idx = 0;
+    for (let i = 0; i < slides.length; i++) {
+      if (slides[i].time_start <= timeMs) idx = i;
+      else break;
+    }
+    return idx;
+  }
+
+  function nextEventMs(currentTimeMs) {
+    let best = Infinity;
+    for (const slide of slides) {
+      if (slide.time_start > currentTimeMs) best = Math.min(best, slide.time_start);
+      for (const anim of (slide.animations || [])) {
+        if (anim.time_start > currentTimeMs) best = Math.min(best, anim.time_start);
+      }
+    }
+    return best === Infinity ? null : best;
+  }
+
+  function prevEventMs(currentTimeMs) {
+    let best = -Infinity;
+    for (const slide of slides) {
+      if (slide.time_start < currentTimeMs) best = Math.max(best, slide.time_start);
+      for (const anim of (slide.animations || [])) {
+        if (anim.time_start < currentTimeMs) best = Math.max(best, anim.time_start);
+      }
+    }
+    return best === -Infinity ? 0 : best;
+  }
+
+  // ── SVG injection ────────────────────────────────────────────────────────
+  function injectSvg(container, index) {
+    try {
+      container.innerHTML = svgCache[index] || "";
+    } catch (e) {
+      console.warn("Slide render error (index=" + index + "):", e);
+      container.innerHTML = '<div class="slide-error">Slide rendering error</div>';
+    }
+  }
+
+  function swapToIndex(index, instant) {
+    if (index === currentIndex) return;
+
+    try {
+      if (instant || nextPrepared !== index) {
+        injectSvg(elCurrent, index);
+      } else {
+        const tmpHtml = elCurrent.innerHTML;
+        elCurrent.innerHTML = elNext.innerHTML;
+        elNext.innerHTML = tmpHtml;
+      }
+    } catch (e) {
+      console.warn("Slide swap error:", e);
+      elCurrent.innerHTML = '<div class="slide-error">Slide rendering error</div>';
+    }
+
+    currentIndex = index;
+    nextPrepared = -1;
+
+    slideCounter.textContent = `${index + 1} / ${slides.length}`;
+    slideCounter.setAttribute("aria-label", `Slide ${index + 1} of ${slides.length}`);
+  }
+
+  function prepareNext(index) {
+    if (index >= slides.length || index === nextPrepared) return;
+    injectSvg(elNext, index);
+    nextPrepared = index;
+  }
+
+  // ── Pointer trail rendering ──────────────────────────────────────────────
+  function renderPointerTrail(slide, currentTimeMs) {
+    pointerLayer.innerHTML = "";
+
+    const trail = slide.pointer_trail;
+    if (!trail || trail.points.length === 0) return;
+
+    const FADE_MS = 800;
+    const points = trail.points;
+
+    let segPoints = [];
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      if (p.time_ms > currentTimeMs) break;
+      const elapsed = currentTimeMs - p.time_ms;
+      if (elapsed >= FADE_MS) continue;
+      segPoints.push({ x: p.x, y: p.y, opacity: 1.0 - elapsed / FADE_MS });
+    }
+
+    if (segPoints.length < 2) return;
+
+    for (let i = 1; i < segPoints.length; i++) {
+      const a = segPoints[i - 1];
+      const b = segPoints[i];
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", a.x); line.setAttribute("y1", a.y);
+      line.setAttribute("x2", b.x); line.setAttribute("y2", b.y);
+      line.setAttribute("stroke", getComputedStyle(document.documentElement).getPropertyValue("--vs-accent").trim() || "#ff4400");
+      line.setAttribute("stroke-width", "3");
+      line.setAttribute("stroke-linecap", "round");
+      line.setAttribute("opacity", ((a.opacity + b.opacity) / 2).toFixed(3));
+      pointerLayer.appendChild(line);
+    }
+  }
+
+  // ── Main RAF loop (audio is master clock) ───────────────────────────────
+  function tick() {
+    const currentMs = audio.currentTime * 1000;
+
+    captionTick(currentMs);
+    const idx = slideIndexAt(currentMs);
+
+    if (idx + 1 < slides.length) {
+      const nextSlide = slides[idx + 1];
+      if (nextSlide.time_start - currentMs < 3000) {
+        prepareNext(idx + 1);
+      }
+    }
+
+    swapToIndex(idx, false);
+    renderPointerTrail(slides[idx] || {}, currentMs);
+
+    btnPlay.textContent = audio.paused ? "▶" : "⏸";
+    btnPlay.setAttribute("aria-label", audio.paused ? "Play (Space)" : "Pause (Space)");
+    updateSeekDisplay();
+
+    requestAnimationFrame(tick);
+  }
+
+  // ── Speed control ────────────────────────────────────────────────────────
+  function setSpeed(idx) {
+    speedIdx = ((idx % speeds.length) + speeds.length) % speeds.length;
+    audio.playbackRate = speeds[speedIdx];
+    speedBtn.textContent = speeds[speedIdx] + "x";
+  }
+
+  speedBtn.addEventListener("click", () => setSpeed(speedIdx + 1));
+
+  // ── Seek bar ──────────────────────────────────────────────────────────────
+  function formatTime(sec) {
+    const s = Math.max(0, sec);
+    const m = Math.floor(s / 60);
+    const ss = Math.floor(s % 60);
+    return m + ":" + (ss < 10 ? "0" : "") + ss;
+  }
+
+  function updateSeekDisplay() {
+    if (!audio.duration || !isFinite(audio.duration)) {
+      seekFill.style.width = "0%";
+      timeDisplay.textContent = "0:00 / 0:00";
+      return;
+    }
+    const pct = (audio.currentTime / audio.duration) * 100;
+    seekFill.style.width = pct + "%";
+    seekBar.setAttribute("aria-valuenow", Math.round(pct));
+    timeDisplay.textContent = formatTime(audio.currentTime) + " / " + formatTime(audio.duration);
+  }
+
+  // Seek on click
+  seekBar.addEventListener("click", (e) => {
+    if (!audio.duration || !isFinite(audio.duration)) return;
+    const rect = seekBar.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    audio.currentTime = ratio * audio.duration;
+    updateSeekDisplay();
+  });
+
+  // Seek with arrow keys when focused
+  seekBar.addEventListener("keydown", (e) => {
+    if (!audio.duration || !isFinite(audio.duration)) return;
+    const step = audio.duration * 0.02; // 2% per keypress
+    if (e.key === "ArrowRight") { e.preventDefault(); audio.currentTime = Math.min(audio.duration, audio.currentTime + step); updateSeekDisplay(); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); audio.currentTime = Math.max(0, audio.currentTime - step); updateSeekDisplay(); }
+  });
+
+  // ── Static mode helpers (no audio) ──────────────────────────────────────
+  function showStatic(i) {
+    staticIdx = Math.max(0, Math.min(i, slides.length - 1));
+    injectSvg(elCurrent, staticIdx);
+    currentIndex = staticIdx;
+    slideCounter.textContent = `${staticIdx + 1} / ${slides.length}`;
+    slideCounter.setAttribute("aria-label", `Slide ${staticIdx + 1} of ${slides.length}`);
+    btnPrev.disabled = staticIdx === 0;
+    btnNext.disabled = staticIdx >= slides.length - 1;
+    showCaptionForSlide(slides[staticIdx]?.id ?? "");
+  }
+
+  // ── Shortcuts overlay ────────────────────────────────────────────────────
+  function toggleShortcuts() {
+    shortcutsOverlay.classList.toggle("visible");
+  }
+  shortcutsBtn.addEventListener("click", toggleShortcuts);
+  shortcutsOverlay.addEventListener("click", (e) => {
+    if (e.target === shortcutsOverlay) shortcutsOverlay.classList.remove("visible");
+  });
+
+  if (hasAudio) {
+    // ── Audio mode: controls ───────────────────────────────────────────────
+    volumeSlider.addEventListener("input", () => {
+      audio.volume = parseFloat(volumeSlider.value);
+    });
+
+    btnPlay.addEventListener("click", () => {
+      if (audio.paused) audio.play(); else audio.pause();
+    });
+
+    btnPrev.addEventListener("click", () => {
+      const t = prevEventMs(audio.currentTime * 1000 - 50);
+      if (t !== audio.currentTime * 1000) {
+        audio.currentTime = t / 1000;
+        swapToIndex(slideIndexAt(t), true);
+      } else {
+        // Fallback: step by slide index (e.g. when all time_start are identical)
+        const idx = Math.max(0, currentIndex - 1);
+        swapToIndex(idx, true);
+      }
+    });
+
+    btnNext.addEventListener("click", () => {
+      const t = nextEventMs(audio.currentTime * 1000);
+      if (t !== null) {
+        audio.currentTime = t / 1000;
+        swapToIndex(slideIndexAt(t), true);
+      } else {
+        // Fallback: step by slide index
+        const idx = Math.min(slides.length - 1, currentIndex + 1);
+        swapToIndex(idx, true);
+      }
+    });
+
+    // Touch swipe (audio mode)
+    let touchStartX = 0;
+    const stage = document.getElementById("stage");
+    stage.addEventListener("touchstart", (e) => {
+      touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+    stage.addEventListener("touchend", (e) => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if (dx > 50) {
+        const t = prevEventMs(audio.currentTime * 1000 - 50);
+        audio.currentTime = t / 1000;
+        swapToIndex(slideIndexAt(t), true);
+      } else if (dx < -50) {
+        const t = nextEventMs(audio.currentTime * 1000);
+        if (t !== null) { audio.currentTime = t / 1000; swapToIndex(slideIndexAt(t), true); }
+      }
+    });
+
+    // ── Keyboard shortcuts (audio mode) ───────────────────────────────────
+    document.addEventListener("keydown", (e) => {
+      if (shortcutsOverlay.classList.contains("visible")) {
+        if (e.key === "Escape") shortcutsOverlay.classList.remove("visible");
+        return;
+      }
+      switch (e.code) {
+        case "Space":
+          e.preventDefault();
+          if (audio.paused) audio.play(); else audio.pause();
+          break;
+        case "ArrowRight": {
+          e.preventDefault();
+          const t = nextEventMs(audio.currentTime * 1000);
+          if (t !== null) { audio.currentTime = t / 1000; swapToIndex(slideIndexAt(t), true); }
+          break;
+        }
+        case "ArrowLeft": {
+          e.preventDefault();
+          const t = prevEventMs(audio.currentTime * 1000 - 50);
+          audio.currentTime = t / 1000;
+          swapToIndex(slideIndexAt(t), true);
+          break;
+        }
+        case "KeyF":
+          e.preventDefault();
+          if (!document.fullscreenElement) {
+            (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)
+              ?.call(document.documentElement);
+          } else {
+            (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+          }
+          break;
+        case "Equal":
+        case "NumpadAdd":
+          e.preventDefault();
+          setSpeed(speedIdx + 1);
+          break;
+        case "Minus":
+        case "NumpadSubtract":
+          e.preventDefault();
+          setSpeed(speedIdx - 1);
+          break;
+        case "KeyM":
+          e.preventDefault();
+          audio.muted = !audio.muted;
+          volumeSlider.value = audio.muted ? 0 : audio.volume;
+          break;
+        case "Slash":
+          if (e.shiftKey) { e.preventDefault(); toggleShortcuts(); }
+          break;
+      }
+    });
+
+  } else {
+    // ── Static mode: controls (no audio) ──────────────────────────────────
+    btnPlay.style.display   = "none";
+    document.getElementById("volume-wrap").style.display = "none";
+    document.getElementById("speed-btn").style.display   = "none";
+
+    // ── TTS controller (static mode only) ────────────────────────────────
+    const ttsSegs = manifest.transcript?.segments;
+    const hasTTS = ttsSegs && ttsSegs.some(s => s.text.trim());
+    if (hasTTS) {
+      btnRead.style.display = "inline-block";
+      btnRead.textContent = "\uD83D\uDD0A Read";
+    }
+
+    let ttsPlaying = false;
+    let ttsPaused = false;
+    let ttsSegIdx = 0;
+    const synth = window.speechSynthesis || null;
+
+    function ttsStop() {
+      if (synth) synth.cancel();
+      ttsPlaying = false;
+      ttsPaused = false;
+      ttsSegIdx = 0;
+      btnRead.textContent = "\uD83D\uDD0A Read";
+      btnRead.classList.remove("reading");
+      captionEl.style.display = "none";
+    }
+
+    function ttsPause() {
+      if (synth) synth.pause();
+      ttsPaused = true;
+      btnRead.textContent = "\u25B6 Resume";
+    }
+
+    function ttsResume() {
+      if (synth) synth.resume();
+      ttsPaused = false;
+      btnRead.textContent = "\u23F8 Pause";
+    }
+
+    function speakSegment(idx) {
+      if (!ttsSegs || idx >= ttsSegs.length) { ttsStop(); return; }
+      ttsSegIdx = idx;
+      const seg = ttsSegs[idx];
+
+      // Navigate to the slide referenced by this segment
+      if (seg.slide_ref) {
+        const slideIdx = slides.findIndex(s => s.id === seg.slide_ref);
+        if (slideIdx >= 0 && slideIdx !== staticIdx) showStatic(slideIdx);
+      }
+
+      // Show caption
+      captionEl.textContent = seg.text;
+      captionEl.style.display = "block";
+
+      const utter = new SpeechSynthesisUtterance(seg.text);
+      utter.lang = manifest.transcript?.language || "en";
+      utter.rate = 1.0;
+
+      utter.onend = () => {
+        if (ttsPlaying) speakSegment(idx + 1);
+      };
+      utter.onerror = () => { ttsStop(); };
+
+      synth.speak(utter);
+    }
+
+    function ttsStart() {
+      if (!synth || !hasTTS) return;
+      synth.cancel();
+      ttsPlaying = true;
+      ttsPaused = false;
+      ttsSegIdx = 0;
+      btnRead.textContent = "\u23F8 Pause";
+      btnRead.classList.add("reading");
+      speakSegment(0);
+    }
+
+    btnRead.addEventListener("click", () => {
+      if (!ttsPlaying) { ttsStart(); }
+      else if (ttsPaused) { ttsResume(); }
+      else { ttsPause(); }
+    });
+
+    btnPrev.addEventListener("click", () => {
+      if (ttsPlaying) ttsStop();
+      showStatic(staticIdx - 1);
+    });
+    btnNext.addEventListener("click", () => {
+      if (ttsPlaying) ttsStop();
+      showStatic(staticIdx + 1);
+    });
+
+    // Touch swipe (static mode)
+    let touchStartX = 0;
+    const stage = document.getElementById("stage");
+    stage.addEventListener("touchstart", (e) => {
+      touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+    stage.addEventListener("touchend", (e) => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if (dx > 50) { if (ttsPlaying) ttsStop(); showStatic(staticIdx - 1); }
+      else if (dx < -50) { if (ttsPlaying) ttsStop(); showStatic(staticIdx + 1); }
+    });
+
+    // ── Keyboard shortcuts (static mode) ──────────────────────────────────
+    document.addEventListener("keydown", (e) => {
+      if (shortcutsOverlay.classList.contains("visible")) {
+        if (e.key === "Escape") shortcutsOverlay.classList.remove("visible");
+        return;
+      }
+      switch (e.code) {
+        case "Space":
+          e.preventDefault();
+          if (ttsPlaying) { ttsPaused ? ttsResume() : ttsPause(); }
+          else if (hasTTS) { ttsStart(); }
+          else { showStatic(staticIdx + 1); }
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          if (ttsPlaying) ttsStop();
+          showStatic(staticIdx + 1);
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          if (ttsPlaying) ttsStop();
+          showStatic(staticIdx - 1);
+          break;
+        case "KeyT":
+          e.preventDefault();
+          if (ttsPlaying) { ttsStop(); } else { ttsStart(); }
+          break;
+        case "KeyF":
+          e.preventDefault();
+          if (!document.fullscreenElement) {
+            (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)
+              ?.call(document.documentElement);
+          } else {
+            (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+          }
+          break;
+        case "Slash":
+          if (e.shiftKey) { e.preventDefault(); toggleShortcuts(); }
+          break;
+      }
+    });
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────────
+  if (hasAudio) {
+    if (slides.length > 0) {
+      injectSvg(elCurrent, 0);
+      currentIndex = 0;
+      slideCounter.textContent = `1 / ${slides.length}`;
+    }
+    requestAnimationFrame(tick);
+  } else {
+    if (slides.length > 0) showStatic(0);
+  }
+})();
+</script>
+</body>
+</html>

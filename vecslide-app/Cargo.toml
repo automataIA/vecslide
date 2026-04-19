@@ -1,0 +1,90 @@
+[package]
+name    = "vecslide-app"
+version.workspace = true
+edition.workspace = true
+publish = false  # Web app binary; distributed via GitHub Pages, not crates.io.
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+# Activated by Trunk.ghpages.toml to set the Router base path to /vecslide.
+gh-pages = []
+
+[dependencies]
+vecslide-core        = { workspace = true, features = ["zip-io"] }  # zip-io: WASM-safe ZIP read/write
+wasm-bindgen-futures = "0.4"  # JsFuture for async file reading
+leptos = { version = "0.8", features = ["csr"] }
+leptos_meta = { version = "0.8" }
+leptos_router = { version = "0.8" }
+console_log = "1"
+log = "0.4"
+console_error_panic_hook = "0.1"
+js-sys = "0.3"
+wasm-bindgen = "=0.2.118"
+
+# TTS pipeline: OGG muxing (pure-Rust, wasm-safe) + integrity hash for remote weights.
+ogg  = "0.9"
+sha2 = "0.10"
+web-sys = { version = "0.3", features = [
+    "HtmlInputElement",
+    "HtmlTextAreaElement",
+    "FileList",
+    "File",
+    "DragEvent",
+    "DataTransfer",
+    "Blob",
+    "BlobPropertyBag",
+    "Url",
+    "HtmlAnchorElement",
+    "HtmlAudioElement",
+    "HtmlElement",
+    "Document",
+    "Window",
+    "Element",
+    "CssStyleDeclaration",
+    # WebCodecs: encoding PCM f32 → Opus packets (unstable API, gated by
+    # `--cfg=web_sys_unstable_apis` set in .cargo/config.toml)
+    "AudioEncoder",
+    "AudioEncoderConfig",
+    "AudioEncoderInit",
+    "EncodedAudioChunk",
+    "EncodedAudioChunkInit",
+    "EncodedAudioChunkType",
+    "AudioData",
+    "AudioDataInit",
+    "AudioDataCopyToOptions",
+    "AudioSampleFormat",
+    "CodecState",
+    # Microphone recording: getUserMedia → MediaRecorder → OGG/Opus chunks
+    "MediaRecorder",
+    "MediaRecorderOptions",
+    "MediaStream",
+    "MediaStreamTrack",
+    "MediaStreamConstraints",
+    "MediaDevices",
+    "Navigator",
+    "BlobEvent",
+] }
+
+# Typst compilation → SVG, bundled in the WASM (single binary, no external .wasm)
+typst     = { workspace = true }
+typst-svg = { workspace = true }
+
+# Lucide icons as Leptos components
+lucide-leptos = { version = "2.577", features = [
+    "arrows", "files", "time", "weather", "accessibility", "brands",
+    "math", "notifications", "multimedia", "communication", "development",
+] }
+
+
+[dev-dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-test = "0.3"
+web-sys = { version = "0.3", features = ["Document", "Window"] }
+
+
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = "abort"
