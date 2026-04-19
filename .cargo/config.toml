@@ -1,0 +1,9 @@
+## Enables unstable `web-sys` APIs for the WebCodecs bindings
+## (`AudioEncoder`, `AudioData`, etc.) used by the `vecslide-app/src/tts/encoder.rs` module.
+##
+## This file lives in the workspace root so it is visible both to Trunk (which invokes
+## cargo from `vecslide-app/`) and to `cargo {check,clippy,test} --workspace`
+## run from the root (CI). The native crates in the workspace do not import
+## web-sys, so the cfg is a no-op for them.
+[build]
+rustflags = ["--cfg=web_sys_unstable_apis"]
