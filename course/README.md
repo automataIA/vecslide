@@ -8,11 +8,11 @@ A collection of open-access educational materials for **Mathematical Analysis**,
 
 | File | Content |
 |------|---------|
-| [analisi-matematica.md](analisi-matematica.md) | Mathematical Analysis, Real Analysis, Functional Analysis |
-| [algebra-lineare-ml.md](algebra-lineare-ml.md) | Linear Algebra applied to Machine Learning and Data Science |
-| [reti-neurali.md](reti-neurali.md) | Neural Networks, Deep Learning, Computer Vision |
-| [ml-probabilita.md](ml-probabilita.md) | Theoretical Machine Learning, Probability, Statistics, Optimization |
-| [repository-curati.md](repository-curati.md) | Curated GitHub repositories with hundreds of university courses |
+| [mathematical-analysis.md](mathematical-analysis.md) | Mathematical Analysis, Real Analysis, Functional Analysis |
+| [linear-algebra-ml.md](linear-algebra-ml.md) | Linear Algebra applied to Machine Learning and Data Science |
+| [neural-networks.md](neural-networks.md) | Neural Networks, Deep Learning, Computer Vision |
+| [ml-probability.md](ml-probability.md) | Theoretical Machine Learning, Probability, Statistics, Optimization |
+| [curated-repositories.md](curated-repositories.md) | Curated GitHub repositories with hundreds of university courses |
 
 ---
 
@@ -31,4 +31,4 @@ A collection of open-access educational materials for **Mathematical Analysis**,
 1. **For systematic study:** Follow the MIT OCW courses in the indicated order (they have structured syllabi)
 2. **For quick reference:** The Stanford CS231n Notes in Markdown are perfect as a reference
 3. **For in-depth theory:** The courses on GitHub (see repository-curati section) cover advanced topics with video+slides
-4. **For Italian-language materials:** See the "Risorse in italiano" section in each file
+4. **For Italian-language materials:** See the "Italian-language Resources" section in each file

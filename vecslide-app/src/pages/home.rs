@@ -1,4 +1,4 @@
-use crate::{DarkMode, LoadedFile};
+use crate::{ASSET_BASE, DarkMode, LoadedFile};
 use js_sys::Uint8Array;
 use leptos::prelude::*;
 use leptos_router::NavigateOptions;
@@ -91,7 +91,7 @@ pub fn Home() -> impl IntoView {
             <nav class="navbar bg-base-100 border-b border-base-300 px-6 sticky top-0 z-50">
                 <div class="flex flex-1 items-end gap-2">
                     <img
-                        src="/vecslide-logo-horizontal-color.svg"
+                        src=format!("{ASSET_BASE}/vecslide-logo-horizontal-color.svg")
                         alt="VecSlide"
                         class="h-9 w-auto select-none"
                         draggable="false"

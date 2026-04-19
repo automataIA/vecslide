@@ -2,10 +2,10 @@
 @import "tailwindcss";
 
 /*
-  STRATEGICO: puntatore esplicito ai sorgenti Rust.
-  Senza questa direttiva il motore Oxide (Tailwind 4) non scansiona i file .rs
-  e non genera le classi usate nelle macro view! di Leptos.
-  Risolve il problema dei monorepo e dei layout non-JS.
+  CRITICAL: explicit pointer to Rust sources.
+  Without this directive the Oxide engine (Tailwind 4) won't scan .rs files
+  and won't generate the classes used in Leptos view! macros.
+  Solves the monorepo and non-JS layout problem.
 */
 @source "../src";
 
@@ -14,7 +14,7 @@
   themes: bumblebee --default, business;
 }
 
-/* ── Stili globali dell'app ──────────────────────────────────────────────── */
+/* ── Global app styles ──────────────────────────────────────────────────── */
 html {
   /* DPI-aware root font size: scales from 14px (720p) to 18px (4K+).
      Uses viewport width as a proxy for DPI — wider screens get larger text. */

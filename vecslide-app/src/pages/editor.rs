@@ -5,6 +5,7 @@ use lucide_leptos::{ArrowLeft, AudioLines, ChevronLeft, ChevronRight, CircleAler
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::spawn_local;
 
+use crate::ASSET_BASE;
 use crate::export::{export_html, trigger_download, trigger_download_binary};
 use crate::import::{export_vecslide, import_vecslide_from_bytes};
 use crate::tts::{SlideAudio, TtsState, ensure_model_loaded, list_voices, synthesize_slide};
@@ -704,7 +705,7 @@ pub fn Editor() -> impl IntoView {
                     </button>
                     <div class="divider divider-horizontal m-0 h-5"></div>
                     <img
-                        src="/vecslide-icon-color.svg"
+                        src=format!("{ASSET_BASE}/vecslide-icon-color.svg")
                         alt="VecSlide"
                         class="h-6 w-auto select-none"
                         draggable="false"

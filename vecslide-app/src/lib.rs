@@ -11,6 +11,11 @@ pub mod theme_extract;
 pub mod tts;
 pub mod typst_world;
 
+/// Prefix for static assets served from `vecslide-app/public/`.
+/// Empty in local/dev, `/vecslide` on GitHub Pages (matches `Trunk.ghpages.toml`
+/// `public_url = "/vecslide/"` and the Router `base`).
+pub const ASSET_BASE: &str = if cfg!(feature = "gh-pages") { "/vecslide" } else { "" };
+
 use crate::pages::editor::Editor;
 use crate::pages::home::Home;
 use crate::pages::not_found::NotFound;
