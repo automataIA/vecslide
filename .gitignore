@@ -158,6 +158,7 @@ my_*.toml
 !.vscode/
 !.cargo/
 !.gitignore
+!**/.nojekyll
 !README.md
 !LICENSE
 !LICENSE-*
