@@ -36,7 +36,7 @@ The secret: slides are SVG code (XML text), not raster images. Whether the scree
                     │  vector_assets/03_conclusion.svg │
                     └─────────────────────────────────┘
                                    │
-                        vecslide compile
+                       vecslide-app (Export HTML)
                                    │
                                    ▼
                     ┌─────────────────────────────────┐
@@ -143,12 +143,12 @@ transcript:  # at the bottom of the manifest, synchronized with audio or standal
 - **SVG and YAML:** compressed with Deflate (~75-80% reduction, they are repetitive XML text)
 - **Opus audio:** archived with Store method (no additional compression, it is already compressed)
 
-> **Note:** Deflate compression happens only in the `.vecslide` path (implemented in
-> `vecslide-core/src/pack.rs`, used by the CLI). The **Export HTML** path of the authoring tool
-> (`vecslide-app`) produces a self-contained HTML file without additional compression: SVGs are
-> raw text in `<script type="text/xml">` blocks and audio is Base64-encoded. The resulting
-> file is larger than an equivalent `.vecslide`, but it opens with a double-click with no
-> supporting tools required.
+> **Note:** Deflate compression lives in `vecslide-core/src/pack.rs` (feature `zip-io`) and
+> produces the compact `.vecslide` container. The **Export HTML** path of the authoring tool
+> (`vecslide-app`) skips that step and emits a self-contained HTML file without additional
+> compression: SVGs are raw text in `<script type="text/xml">` blocks and audio is
+> Base64-encoded. The resulting file is larger than an equivalent `.vecslide`, but it opens
+> with a double-click with no supporting tools required.
 
 ## The Viewer
 
@@ -226,7 +226,7 @@ The project is a Cargo workspace with three crates:
 vecslide/
 ├── Cargo.toml              # workspace
 ├── vecslide-core/          # pure library
-├── vecslide-cli/           # terminal binary
+├── vecslide/               # facade crate (re-export of vecslide-core)
 └── vecslide-app/           # Leptos web app (authoring tool)
 ```
 
@@ -238,22 +238,25 @@ Pure Rust library, with no UI or web dependencies. It defines the format and all
 |--------|----------------|
 | `manifest` | Data structures (`Presentation`, `Slide`, `Animation`, `PointerTrail`, `Annotation`), YAML/JSON serde |
 | `validation` | Consistency checks: ordered timestamps, referenced files exist, compatible duration |
-| `pack` | Source folder → `.vecslide` file (ZIP) |
-| `unpack` | `.vecslide` file → in-memory structs or on-disk folder |
-| `compile_html` | `.vecslide` file → single self-contained `.html` |
+| `pack` | Source folder → `.vecslide` file (ZIP) — feature `zip-io` |
+| `unpack` | `.vecslide` file → in-memory structs or on-disk folder — feature `zip-io` |
+| `compile_html` | Presentation → single self-contained `.html` |
 | `pointer` | Trail logic: movement threshold, point decimation, fading opacity |
 | `player_template` | HTML/CSS/JS viewer as static strings (`include_str!`) |
 
-### `vecslide-cli`
+Feature flags: `zip-io` enables in-memory ZIP I/O (WASM-safe); `native` adds `std::fs` and Typst compilation (not for WASM).
 
-Terminal binary. Depends only on `vecslide-core`.
+### `vecslide`
 
+Facade crate published on crates.io. Re-exports the full `vecslide-core` API under a shorter
+import path:
+
+```rust
+use vecslide::manifest::Presentation;
+use vecslide::{unpack_from_reader, compile_html};
 ```
-vecslide pack ./project/ -o lesson.vecslide
-vecslide unpack lesson.vecslide -o ./project/
-vecslide compile lesson.vecslide -o lesson.html
-vecslide validate ./project/manifest.yaml
-```
+
+Released in lockstep with `vecslide-core`, same feature flags.
 
 ### `vecslide-app`
 
@@ -271,9 +274,10 @@ Rust/WASM web app with Leptos 0.8 and Trunk (CSR). It is the authoring tool — 
 
 The app runs in the browser and uses the same SVG rendering engine as the final viewer: what the lecturer sees during creation is identical to what the student will see.
 
-> **Export HTML vs Export .vecslide:** the "Export HTML" button produces a single self-contained
-> `.html` file (inline SVG, no compression). To obtain the compressed `.vecslide` format
-> (Deflate on SVG/YAML, Store on audio) you need to use the CLI: `vecslide compile`.
+> **Export HTML vs `.vecslide`:** the "Export HTML" button produces a single self-contained
+> `.html` file (inline SVG, no compression). The compressed `.vecslide` format (Deflate on
+> SVG/YAML, Store on audio) is produced by `vecslide-core` with the `zip-io` feature — use it
+> from any Rust program that depends on `vecslide` or `vecslide-core`.
 
 ### Dependency graph
 
@@ -281,11 +285,37 @@ The app runs in the browser and uses the same SVG rendering engine as the final 
 vecslide-core              (pure library, no UI, no web)
     ^           ^
     |           |
-vecslide-cli    vecslide-app
-(clap)          (leptos, web-sys, wasm-bindgen)
+vecslide        vecslide-app
+(facade)        (leptos, web-sys, wasm-bindgen)
 ```
 
-`vecslide-core` knows nothing about Leptos or the browser. The same validation, packing, and compilation logic works from both the CLI and the web app. If a desktop app (Tauri, egui) were desired in the future, it would depend only on `core`.
+`vecslide-core` knows nothing about Leptos or the browser. The same validation, packing, and compilation logic runs from the facade crate and from the web app. A future desktop app (Tauri, egui) would depend only on `core`.
+
+## Course / examples
+
+The [`course/`](course/) directory contains ready-to-use educational material and a reference
+presentation:
+
+```
+course/
+├── Example.vecslide             # pre-built presentation — drop into the authoring tool
+├── lesson-01-svd/               # Singular Value Decomposition
+│   ├── slides.typ               # Typst source, slides separated by `----`
+│   └── narration.md             # per-slide narration script
+├── lesson-02-backprop/          # Backpropagation — same layout
+├── lesson-03-sequences/         # Sequence models — same layout
+├── slides-rules.md              # STEM slide-design & narration guide
+├── mathematical-analysis.md     # curated STEM resources by subject
+├── linear-algebra-ml.md
+├── neural-networks.md
+├── ml-probability.md
+└── curated-repositories.md
+```
+
+Each lesson folder is a minimal project skeleton: paste `slides.typ` into the authoring tool
+(slides split on the `----` separator) and the paired `narration.md` provides the script for
+each slide. `Example.vecslide` is a finished `.vecslide` file — open it with any ZIP tool to
+inspect the format, or load it in the viewer to see the final result.
 
 ## Technical choices
 
